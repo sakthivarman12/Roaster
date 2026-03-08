@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: 'roaster',   // relative paths → works on GitHub Pages subdirectory
+  base: 'Roaster',   // relative paths → works on GitHub Pages subdirectory
 })
