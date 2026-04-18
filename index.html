@@ -1,18 +1,1000 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0D1117" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Roster — Staff Scheduling</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBG Duty Roster</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--border:#d0cfc8;--border-dark:#aaa;
+  --text:#1a1a1a;--muted:#888;--header:#1a2540;--header-text:#fff;
+  --sunday:#fff8f0;--today:#f0f7ff;
+  --reg-bg:#e8f5e9;--reg-text:#2e7d32;--reg-b:#a5d6a7;
+  --full-bg:#e3f2fd;--full-text:#1565c0;--full-b:#90caf9;
+  --leave-bg:#fce4ec;--leave-text:#c62828;--leave-b:#f48fb1;
+  --pdo-bg:#fff3e0;--pdo-text:#e65100;--pdo-b:#ffb74d;
+  --u1:#1565c0;--u1-bg:#e3f2fd;--u1-b:#90caf9;
+  --u2:#6a1b9a;--u2-bg:#f3e5f5;--u2-b:#ce93d8;
+  --font:'Segoe UI','Arial',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem;}
+#toast{position:fixed;top:1rem;right:1rem;z-index:9999;max-width:380px;font-size:0.73rem;padding:0.6rem 1rem;border-radius:4px;opacity:0;transition:opacity 0.2s;pointer-events:none;line-height:1.5;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+#toast.show{opacity:1;}
+#dblog{background:#fffde7;border:1px solid #f9a825;border-radius:4px;padding:0.6rem 0.9rem;margin-bottom:1rem;font-size:0.72rem;color:#5d4037;display:none;}
+#dblog.visible{display:block;}
+#dblog pre{white-space:pre-wrap;word-break:break-all;margin-top:4px;font-family:monospace;font-size:0.68rem;}
+#loader{position:fixed;inset:0;background:rgba(245,244,240,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;font-size:0.85rem;color:var(--muted);z-index:99;}
+#loader.hidden{display:none;}
+#loaderMsg{font-size:0.75rem;color:var(--muted);}
+.hospital-header{text-align:center;background:var(--header);color:var(--header-text);padding:0.9rem 1.5rem;margin-bottom:1.25rem;border-radius:4px;}
+.hospital-header h1{font-size:1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.2rem;}
+.hospital-header h2{font-size:0.8rem;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;opacity:0.8;margin-bottom:0.15rem;}
+.hospital-header h3{font-size:0.75rem;font-weight:600;letter-spacing:0.05em;opacity:0.9;}
+.summary-bar{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:1rem;overflow:hidden;}
+.summary-item{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.6rem 1.2rem;border-right:1px solid var(--border);min-width:100px;}
+.summary-item:last-child{border-right:none;}
+.summary-item .s-val{font-size:1.4rem;font-weight:700;line-height:1;color:var(--header);}
+.summary-item .s-lbl{font-size:0.65rem;color:var(--muted);margin-top:3px;letter-spacing:0.04em;text-transform:uppercase;}
+.summary-item.pdo .s-val{color:var(--pdo-text);}
+.summary-item.full .s-val{color:#1565c0;}
+.summary-item.on-duty .s-val{color:#2e7d32;}
+.toolbar{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;background:var(--surface);padding:0.65rem 1rem;border:1px solid var(--border);border-radius:4px;}
+.month-nav{display:flex;align-items:center;gap:0.6rem;}
+.month-nav button{background:none;border:1px solid var(--border-dark);color:var(--text);font-size:0.75rem;padding:0.3rem 0.6rem;cursor:pointer;border-radius:3px;font-family:var(--font);}
+.month-nav button:hover{background:#eee;}
+.month-nav .month-label{font-size:0.8rem;font-weight:600;min-width:120px;text-align:center;}
+.add-doctor{display:flex;align-items:center;}
+.add-doctor input{border:1px solid var(--border-dark);border-right:none;background:#fff;color:var(--text);font-family:var(--font);font-size:0.75rem;padding:0.35rem 0.65rem;width:140px;outline:none;border-radius:3px 0 0 3px;}
+.add-doctor input:focus{border-color:#555;}
+.add-doctor select.unit-pick{border:1px solid var(--border-dark);border-right:none;background:#fff;color:var(--text);font-family:var(--font);font-size:0.73rem;padding:0.35rem 0.4rem;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;min-width:68px;text-align:center;}
+.add-doctor button{border:1px solid var(--border-dark);background:var(--header);color:#fff;font-family:var(--font);font-size:0.75rem;padding:0.35rem 0.75rem;cursor:pointer;border-radius:0 3px 3px 0;}
+.add-doctor button:hover{background:#243060;}
+.icon-btn{border:1px solid var(--border-dark);background:none;color:var(--text);font-family:var(--font);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;border-radius:3px;white-space:nowrap;}
+.icon-btn:hover{background:#eee;}
+.import-btn{border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;font-family:var(--font);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;border-radius:3px;white-space:nowrap;font-weight:500;}
+.import-btn:hover{background:#bbdefb;}
+.links-btn{border:1px solid #00796b;background:#e0f2f1;color:#00796b;font-family:var(--font);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;border-radius:3px;white-space:nowrap;font-weight:500;}
+.links-btn:hover{background:#b2dfdb;}
+.autofill-btn{border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;font-family:var(--font);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;border-radius:3px;white-space:nowrap;font-weight:500;}
+.autofill-btn:hover{background:#e1bee7;}
+.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4caf50;margin-right:5px;}
+.status-dot.offline{background:#f44336;}
+/* Chips */
+.doctor-chips-wrap{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:1rem;overflow:hidden;}
+.chips-unit-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:0.5rem 1rem;}
+.chips-unit-label{font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;padding:0.2rem 0.7rem;border-radius:3px;margin-right:2px;}
+.chips-unit-label.u1{background:var(--u1-bg);color:var(--u1);border:1px solid var(--u1-b);}
+.chips-unit-label.u2{background:var(--u2-bg);color:var(--u2);border:1px solid var(--u2-b);}
+.chips-divider{border:none;border-top:1px solid var(--border);margin:0;}
+.chip{display:inline-flex;align-items:center;gap:4px;background:#f0f0f8;color:#333;border:1px solid #c5cae9;border-radius:20px;font-size:0.7rem;padding:0.2rem 0.5rem 0.2rem 0.7rem;}
+.chip .rm{cursor:pointer;color:#9fa8da;font-size:0.65rem;margin-left:2px;}
+.chip .rm:hover{color:#c62828;}
+.chip .unit-toggle{cursor:pointer;font-size:0.57rem;font-weight:700;padding:1px 5px;border-radius:10px;user-select:none;transition:all 0.15s;white-space:nowrap;}
+.chip .unit-toggle.u1{background:var(--u1-bg);color:var(--u1);border:1px solid var(--u1-b);}
+.chip .unit-toggle.u2{background:var(--u2-bg);color:var(--u2);border:1px solid var(--u2-b);}
+/* Table */
+.grid-wrap{overflow-x:auto;}
+table{border-collapse:collapse;width:100%;background:var(--surface);font-size:0.78rem;}
+table th,table td{border:1px solid var(--border);padding:0;}
+thead th{background:var(--header);color:var(--header-text);font-size:0.7rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;padding:0.5rem 0.6rem;white-space:nowrap;text-align:center;}
+thead th.left{text-align:left;}
+tbody tr.sunday{background:var(--sunday);}
+tbody tr.today-row{background:var(--today);}
+tbody tr.has-full td.date-cell,tbody tr.has-full td.day-cell{font-weight:700;color:#1565c0;}
+td.date-cell{padding:0.4rem 0.6rem;white-space:nowrap;font-size:0.75rem;font-weight:400;text-align:center;min-width:70px;}
+td.day-cell{padding:0.3rem 0.5rem;white-space:nowrap;font-size:0.75rem;text-align:left;min-width:95px;}
+tr.sunday td.day-cell{font-weight:700;}
+.unit-day-badge{display:inline-block;font-size:0.55rem;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;white-space:nowrap;}
+.udb-u1{background:var(--u1-bg);color:var(--u1);border:1px solid var(--u1-b);}
+.udb-u2{background:var(--u2-bg);color:var(--u2);border:1px solid var(--u2-b);}
+.udb-both{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+td.duty-cell{padding:4px 6px;min-width:420px;}
+.duty-rows{display:flex;flex-direction:column;gap:4px;}
+.duty-row-item{display:flex;gap:4px;align-items:center;}
+.slot-label{font-size:0.58rem;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap;min-width:28px;text-align:center;border:1px solid;}
+.slot-label.lbl-u1{background:var(--u1-bg);color:var(--u1);border-color:var(--u1-b);}
+.slot-label.lbl-u2{background:var(--u2-bg);color:var(--u2);border-color:var(--u2-b);}
+select.doc-select{-webkit-appearance:none;appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);font-family:var(--font);font-size:0.72rem;padding:0.28rem 0.5rem;flex:1;min-width:0;cursor:pointer;outline:none;border-radius:3px;max-width:160px;}
+select.doc-select:focus{border-color:#666;}
+select.shift-select{-webkit-appearance:none;appearance:none;border:1px solid var(--border);background:#fff;font-family:var(--font);font-size:0.68rem;padding:0.28rem 0.3rem;width:80px;cursor:pointer;outline:none;border-radius:3px;text-align:center;font-weight:500;}
+select.shift-select option{background:#fff;color:var(--text);}
+select.shift-select.s-REG{background:var(--reg-bg);color:var(--reg-text);border-color:var(--reg-b);}
+select.shift-select.s-FULL{background:var(--full-bg);color:var(--full-text);border-color:var(--full-b);font-weight:700;}
+select.shift-select.s-LEAVE{background:var(--leave-bg);color:var(--leave-text);border-color:var(--leave-b);}
+td.pdo-cell{padding:4px 6px;min-width:160px;vertical-align:top;}
+.pdo-empty{color:#ccc;font-size:0.68rem;padding:2px 0;}
+.pdo-badge{display:inline-flex;align-items:center;gap:4px;background:var(--pdo-bg);color:var(--pdo-text);border:1px solid var(--pdo-b);border-radius:3px;font-size:0.68rem;padding:2px 7px;margin:2px 2px;white-space:nowrap;}
+.pdo-count{display:inline-block;background:var(--pdo-text);color:#fff;border-radius:50%;width:16px;height:16px;font-size:0.6rem;font-weight:700;line-height:16px;text-align:center;margin-right:2px;}
+td.note-cell{padding:3px 6px;min-width:140px;}
+input.note-input{border:none;background:transparent;font-family:var(--font);font-size:0.72rem;color:var(--text);width:100%;outline:none;padding:0.25rem 0.1rem;}
+input.note-input::placeholder{color:#bbb;}
+input.note-input:focus{background:#fffde7;}
+.footer-note{margin-top:0.75rem;font-size:0.7rem;color:var(--muted);padding:0.4rem;border-top:1px solid var(--border);background:var(--surface);}
+.legend{display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;font-size:0.7rem;color:var(--muted);}
+.legend-item{display:flex;align-items:center;gap:5px;}
+.legend-box{width:12px;height:12px;border-radius:2px;border:1px solid;}
+@media print{body{padding:0;}.toolbar,.doctor-chips-wrap,.legend,#toast,#dblog,.summary-bar{display:none!important;}table{font-size:0.7rem;}}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.hidden{display:none;}
+.modal-box{background:#fff;border-radius:6px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.3);}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:0.85rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1;}
+.modal-head h3{font-size:0.85rem;font-weight:700;color:var(--header);letter-spacing:0.03em;}
+.modal-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);padding:0.2rem 0.5rem;line-height:1;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:1rem 1.25rem;}
+.modal-foot{padding:0.75rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:0.6rem;background:#fafafa;}
+/* Staff Links */
+.links-unit-head{font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:0.35rem 0.75rem;border-radius:3px;margin:0.6rem 0 0.4rem;display:inline-block;}
+.links-unit-head.u1{background:var(--u1-bg);color:var(--u1);border:1px solid var(--u1-b);}
+.links-unit-head.u2{background:var(--u2-bg);color:var(--u2);border:1px solid var(--u2-b);}
+.doctor-link-row{display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0;border-bottom:1px solid var(--border);}
+.doctor-link-row:last-child{border-bottom:none;}
+.dlr-name{font-size:0.78rem;font-weight:600;min-width:130px;color:var(--header);}
+.dlr-url{font-size:0.62rem;color:#555;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;background:#f5f5f5;padding:0.25rem 0.5rem;border-radius:3px;border:1px solid var(--border);}
+.copy-btn{border:1px solid var(--border-dark);background:#fff;font-size:0.68rem;padding:0.28rem 0.7rem;cursor:pointer;border-radius:3px;white-space:nowrap;font-family:var(--font);}
+.copy-btn:hover{background:#eee;}
+.copy-btn.copied{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;}
+/* Auto-fill */
+.stats-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:0.85rem;}
+.stat-chip{background:#e8eaf6;color:#283593;border:1px solid #c5cae9;border-radius:4px;font-size:0.68rem;padding:0.25rem 0.65rem;}
+.stat-chip strong{color:var(--header);}
+.conflict-box{background:#fce4ec;border:1px solid var(--leave-b);border-radius:4px;padding:0.65rem 0.9rem;margin-bottom:0.75rem;font-size:0.72rem;color:var(--leave-text);}
+.conflict-box h4{font-size:0.73rem;margin-bottom:0.35rem;font-weight:700;}
+.preview-table{width:100%;border-collapse:collapse;font-size:0.72rem;}
+.preview-table th{background:var(--header);color:#fff;padding:0.4rem 0.6rem;text-align:left;font-size:0.68rem;font-weight:600;letter-spacing:0.04em;}
+.preview-table td{border:1px solid var(--border);padding:0.3rem 0.55rem;}
+.preview-table tr:nth-child(even) td{background:#fafafa;}
+.preview-conflict td{background:#fce4ec!important;}
+.preview-full-cell{color:#1565c0;font-weight:700;}
+.conflict-pill{display:inline-block;background:#c62828;color:#fff;font-size:0.58rem;border-radius:3px;padding:1px 5px;margin-left:3px;vertical-align:middle;}
+.dist-grid{display:flex;flex-wrap:wrap;gap:5px;margin-top:0.3rem;margin-bottom:0.5rem;}
+.dist-chip{font-size:0.65rem;background:#f5f5f5;border:1px solid var(--border);border-radius:3px;padding:0.2rem 0.55rem;color:var(--text);}
+.dist-chip b{color:var(--header);}
+.dist-unit-head{font-size:0.7rem;font-weight:700;margin:0.5rem 0 0.2rem;padding:2px 8px;border-radius:3px;display:inline-block;}
+.dist-unit-head.u1{background:var(--u1-bg);color:var(--u1);}
+.dist-unit-head.u2{background:var(--u2-bg);color:var(--u2);}
+/* Portal */
+#adminView{display:block;}
+#adminView.hidden{display:none;}
+#portalView{display:none;max-width:480px;margin:0 auto;}
+#portalView.active{display:block;}
+.portal-header{text-align:center;background:var(--header);color:#fff;border-radius:6px;padding:1.5rem 1rem;margin-bottom:1.25rem;}
+.ph-hospital{font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.7;margin-bottom:0.4rem;}
+.ph-name{font-size:1.2rem;font-weight:700;margin-bottom:0.3rem;}
+.ph-unit{font-size:0.72rem;font-weight:600;padding:2px 12px;border-radius:10px;display:inline-block;margin-bottom:0.3rem;}
+.ph-unit.u1{background:rgba(144,202,249,0.3);color:#bbdefb;}
+.ph-unit.u2{background:rgba(206,147,216,0.3);color:#e1bee7;}
+.ph-sub{font-size:0.72rem;opacity:0.8;}
+.portal-card{background:#fff;border:1px solid var(--border);border-radius:6px;padding:1rem;margin-bottom:1rem;}
+.portal-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;}
+.portal-month-nav button{border:1px solid var(--border-dark);background:#fff;padding:0.35rem 0.8rem;border-radius:3px;cursor:pointer;font-size:0.75rem;font-family:var(--font);}
+.portal-month-nav button:hover{background:#eee;}
+.pm-label{font-size:0.85rem;font-weight:700;color:var(--header);}
+.portal-legend{display:flex;gap:1.25rem;justify-content:center;margin-bottom:0.75rem;}
+.portal-legend-item{display:flex;align-items:center;gap:5px;font-size:0.68rem;color:var(--muted);}
+.pl-box{width:11px;height:11px;border-radius:2px;border:1px solid;}
+.portal-status{font-size:0.7rem;text-align:center;color:var(--muted);min-height:18px;margin-bottom:0.5rem;transition:color 0.2s;}
+.portal-status.saving{color:#e65100;}
+.portal-status.saved{color:#2e7d32;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-head{font-size:0.6rem;font-weight:700;text-align:center;color:var(--muted);padding:0.3rem 0;text-transform:uppercase;}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:5px;font-size:0.78rem;cursor:pointer;border:1.5px solid transparent;transition:all 0.1s;user-select:none;font-family:var(--font);}
+.cal-day:hover:not(.cal-empty):not(.cal-past){filter:brightness(0.9);}
+.cal-empty{cursor:default;}
+.cal-past{opacity:0.3;cursor:not-allowed;pointer-events:none;}
+.cal-avail{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;}
+.cal-unavail{background:#fce4ec;border-color:#f48fb1;color:#c62828;font-weight:700;}
+.cal-today-ring{box-shadow:0 0 0 2.5px var(--header);}
+.cal-sunday.cal-avail{color:#e65100;}
+.portal-summary-card{font-size:0.72rem;color:var(--muted);text-align:center;padding:0.6rem;}
+.unavail-list{margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;}
+.unavail-tag{background:var(--leave-bg);color:var(--leave-text);border:1px solid var(--leave-b);border-radius:3px;font-size:0.66rem;padding:2px 8px;}
+.want-tag{background:var(--reg-bg);color:var(--reg-text);border:1px solid var(--reg-b);border-radius:3px;font-size:0.66rem;padding:2px 8px;}
+.portal-note{font-size:0.67rem;color:var(--muted);text-align:center;padding:0.5rem;font-style:italic;}
+.cal-want{background:#e8f5e9;border-color:#66bb6a;color:#2e7d32;font-weight:700;}
+.cal-want-ring{box-shadow:0 0 0 2.5px #2e7d32;}
+.want-section-title{font-size:0.75rem;font-weight:700;color:var(--header);padding:0.5rem 0 0.3rem;border-top:1px solid var(--border);margin-top:0.5rem;text-align:center;}
+.want-badge{display:inline-flex;align-items:center;gap:4px;background:var(--reg-bg);color:var(--reg-text);border:1px solid var(--reg-b);border-radius:3px;font-size:0.68rem;padding:2px 7px;margin:2px;white-space:nowrap;}
+.want-count{display:inline-block;background:var(--reg-text);color:#fff;border-radius:50%;width:16px;height:16px;font-size:0.6rem;font-weight:700;line-height:16px;text-align:center;margin-right:2px;}
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+<div id="loader"><span>Loading...</span><span id="loaderMsg"></span></div>
+<div id="toast"></div>
+
+<div id="adminView">
+<div id="dblog"><strong>⚠ Database Error</strong><pre id="dblogtext"></pre></div>
+<div class="hospital-header">
+  <h1>ACS Medical College &amp; Hospital</h1>
+  <h2>Department of OBG</h2>
+  <h3 id="rosterTitle"></h3>
+</div>
+<div class="summary-bar">
+  <div class="summary-item"><div class="s-val" id="sumTotal">—</div><div class="s-lbl">Total Staff</div></div>
+  <div class="summary-item on-duty"><div class="s-val" id="sumOnDuty">—</div><div class="s-lbl">On Duty Today</div></div>
+  <div class="summary-item full"><div class="s-val" id="sumFull">—</div><div class="s-lbl">Full Duty Today</div></div>
+  <div class="summary-item pdo"><div class="s-val" id="sumPdo">—</div><div class="s-lbl">PDO Today</div></div>
+</div>
+<div class="doctor-chips-wrap" id="doctorChipsWrap"></div>
+<div class="toolbar">
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">&#8592;</button>
+    <div class="month-label" id="monthLabel"></div>
+    <button onclick="changeMonth(1)">&#8594;</button>
+  </div>
+  <div class="add-doctor">
+    <input type="text" id="docInput" placeholder="Doctor name" maxlength="30"/>
+    <select id="docUnitSelect" class="unit-pick" title="Assign to unit">
+      <option value="unit1">Unit 1</option>
+      <option value="unit2">Unit 2</option>
+    </select>
+    <button onclick="addDoctor()">+ Add</button>
+  </div>
+  <button class="import-btn" onclick="importMarch2026()">&#8659; Import March 2026</button>
+  <button class="links-btn" onclick="openStaffLinks()">📅 Staff Links</button>
+  <button class="autofill-btn" onclick="openAutoFill()">⚡ Auto-fill</button>
+  <button class="icon-btn" onclick="window.print()">&#128438; Print</button>
+  <span style="font-size:0.68rem;color:var(--muted);margin-left:auto;display:flex;align-items:center">
+    <span class="status-dot" id="dbDot"></span><span id="dbStatus">Connecting...</span>
+  </span>
+</div>
+<div class="grid-wrap">
+  <table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table>
+</div>
+<div class="footer-note" style="display:flex;justify-content:space-between;align-items:flex-end;padding:0.75rem 1rem;">
+  <span style="font-style:italic;font-size:0.7rem;">All Duty Exchange to be informed to HOD</span>
+  <div style="text-align:center;min-width:220px;">
+    <div style="height:80px;border:1px dashed #bbb;border-radius:4px;margin-bottom:6px;background:#fafafa;display:flex;align-items:center;justify-content:center;"><span style="font-size:0.65rem;color:#ccc;letter-spacing:0.05em;">SIGN &amp; SEAL</span></div>
+    <div style="border-top:1.5px solid #555;padding-top:5px;font-size:0.72rem;color:var(--text);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">HOD Signature</div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:3px;">Head of Department, OBG</div>
+    <div style="font-size:0.63rem;color:var(--muted);">ACS Medical College &amp; Hospital</div>
+  </div>
+</div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:var(--reg-bg);border-color:var(--reg-b)"></div>Regular</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--full-bg);border-color:var(--full-b)"></div>Full Day</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--leave-bg);border-color:var(--leave-b)"></div>Leave</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--pdo-bg);border-color:var(--pdo-b)"></div>PDO</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--u1-bg);border-color:var(--u1-b)"></div>Unit 1 day</div>
+  <div class="legend-item"><div class="legend-box" style="background:var(--u2-bg);border-color:var(--u2-b)"></div>Unit 2 day</div>
+  <div class="legend-item"><span style="font-size:0.68rem;">Sunday = one from each unit</span></div>
+</div>
+</div>
+
+<!-- PORTAL -->
+<div id="portalView">
+  <div class="portal-header">
+    <div class="ph-hospital">ACS Medical College &amp; Hospital · Dept. of OBG</div>
+    <div class="ph-name" id="portalDoctorName">—</div>
+    <div class="ph-unit" id="portalUnitBadge"></div>
+    <div class="ph-sub">Tap a date to mark yourself <strong>unavailable</strong> — tap again to undo</div>
+  </div>
+  <div class="portal-card">
+    <div class="portal-month-nav">
+      <button onclick="portalChangeMonth(-1)">&#8592;</button>
+      <div class="pm-label" id="portalMonthLabel"></div>
+      <button onclick="portalChangeMonth(1)">&#8594;</button>
+    </div>
+    <div class="portal-legend">
+      <div class="portal-legend-item"><div class="pl-box" style="background:var(--reg-bg);border-color:var(--reg-b)"></div>Available</div>
+      <div class="portal-legend-item"><div class="pl-box" style="background:var(--leave-bg);border-color:var(--leave-b)"></div>Unavailable</div>
+    </div>
+    <div class="portal-status" id="portalStatus"></div>
+    <div class="cal-grid" id="portalCalGrid"></div>
+  </div>
+  <div class="portal-card">
+    <div class="portal-summary-card">
+      <div id="portalSummaryText">Loading…</div>
+      <div class="unavail-list" id="portalUnavailList"></div>
+    </div>
+  </div>
+  <!-- Want Dates S1 (Unit 1 slot) -->
+  <div class="portal-card">
+    <div style="text-align:center;margin-bottom:0.75rem;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--u1);margin-bottom:0.2rem;">✅ Want Dates — Unit 1 Slot</div>
+      <div style="font-size:0.68rem;color:var(--muted);">Tap a date to say you <strong>prefer slot 1 (Unit 1)</strong> on that day — tap again to undo</div>
+      <div style="font-size:0.63rem;color:var(--muted);margin-top:2px;">24-duty &amp; Saturday rules still apply · Outlined dates = Unit 1 scheduled</div>
+    </div>
+    <div class="portal-legend">
+      <div class="portal-legend-item"><div class="pl-box" style="background:var(--reg-bg);border-color:#66bb6a"></div>Want slot 1 this date</div>
+      <div class="portal-legend-item"><div class="pl-box" style="background:#e8f5e9;border-color:var(--u1-b)"></div>Unit 1 day</div>
+    </div>
+    <div class="portal-status" id="portalWantStatusS1"></div>
+    <div class="cal-grid" id="portalWantCalGridS1"></div>
+  </div>
+  <div class="portal-card">
+    <div class="portal-summary-card">
+      <div id="portalWantSummaryTextS1">Loading…</div>
+      <div class="unavail-list" id="portalWantListS1"></div>
+    </div>
+  </div>
+  <!-- Want Dates S2 (Unit 2 slot) -->
+  <div class="portal-card">
+    <div style="text-align:center;margin-bottom:0.75rem;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--u2);margin-bottom:0.2rem;">✅ Want Dates — Unit 2 Slot</div>
+      <div style="font-size:0.68rem;color:var(--muted);">Tap a date to say you <strong>prefer slot 2 (Unit 2)</strong> on that day — tap again to undo</div>
+      <div style="font-size:0.63rem;color:var(--muted);margin-top:2px;">24-duty &amp; Saturday rules still apply · Outlined dates = Unit 2 scheduled</div>
+    </div>
+    <div class="portal-legend">
+      <div class="portal-legend-item"><div class="pl-box" style="background:var(--reg-bg);border-color:#66bb6a"></div>Want slot 2 this date</div>
+      <div class="portal-legend-item"><div class="pl-box" style="background:var(--u2-bg);border-color:var(--u2-b)"></div>Unit 2 day</div>
+    </div>
+    <div class="portal-status" id="portalWantStatusS2"></div>
+    <div class="cal-grid" id="portalWantCalGridS2"></div>
+  </div>
+  <div class="portal-card">
+    <div class="portal-summary-card">
+      <div id="portalWantSummaryTextS2">Loading…</div>
+      <div class="unavail-list" id="portalWantListS2"></div>
+    </div>
+  </div>
+  <div class="portal-note">Changes save instantly. Close this tab when you're done.</div>
+</div>
+
+<!-- Staff Links Modal -->
+<div id="staffLinksModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:620px;">
+    <div class="modal-head">
+      <h3>📅 Staff Availability Links</h3>
+      <button class="modal-close" onclick="closeModal('staffLinksModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.85rem;">Share each link with the respective doctor. Links are grouped by unit.</p>
+      <div id="staffLinksBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Auto-fill Modal -->
+<div id="autoFillModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:740px;">
+    <div class="modal-head">
+      <h3>⚡ Auto-fill — <span id="autoFillMonthLabel"></span></h3>
+      <button class="modal-close" onclick="closeModal('autoFillModal')">✕</button>
+    </div>
+    <div class="modal-body" id="autoFillBody">
+      <div style="text-align:center;padding:2rem;color:var(--muted);font-size:0.8rem;">Computing schedule…</div>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" onclick="closeModal('autoFillModal')">Cancel</button>
+      <button id="applyFillBtn" class="autofill-btn" onclick="applyAutoFill()" disabled>⚡ Apply to Roster</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  SUPABASE: run once —
+  ALTER TABLE public.doctors ADD COLUMN IF NOT EXISTS unit text DEFAULT 'unit1';
+
+  CREATE TABLE IF NOT EXISTS public.want_dates (
+    id bigint generated always as identity primary key,
+    doctor_name text not null,
+    date date not null,
+    slot text not null default 's1',  -- 's1' = Unit1 slot, 's2' = Unit2 slot
+    created_at timestamptz default now(),
+    unique(doctor_name, date, slot)
+  );
+  ALTER TABLE public.want_dates ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "anon_all" ON public.want_dates FOR ALL TO anon USING (true) WITH CHECK (true);
+  -- If upgrading existing table, run:
+  -- ALTER TABLE public.want_dates ADD COLUMN IF NOT EXISTS slot text NOT NULL DEFAULT 's1';
+  -- ALTER TABLE public.want_dates DROP CONSTRAINT IF EXISTS want_dates_doctor_name_date_key;
+  -- ALTER TABLE public.want_dates ADD CONSTRAINT want_dates_doctor_name_date_slot_key UNIQUE(doctor_name, date, slot);
+
+  UNIT SCHEDULE:
+  Week 0 (days 1-7):  Unit1=Mon/Wed/Fri, Unit2=Tue/Thu/Sat
+  Week 1 (days 8-14): Unit1=Tue/Thu/Sat, Unit2=Mon/Wed/Fri  (alternates)
+  Sunday = BOTH (slot1 → Unit1 doctor, slot2 → Unit2 doctor)
+
+  On a Unit1 day: both doctor dropdowns show only Unit1 doctors
+  On a Unit2 day: both doctor dropdowns show only Unit2 doctors
+  On Sunday:      slot1 shows Unit1 doctors, slot2 shows Unit2 doctors
+*/
+const BASE='https://zmjfzhpypaiczaricoxm.supabase.co/rest/v1';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptamZ6aHB5cGFpY3phcmljb3htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDU3MTQsImV4cCI6MjA4OTIyMTcxNH0.Q6HtgDA1wm3_FjmUbM_DdBWKIe3zHwvkn-egOu1hXtE';
+const HDR={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation','Accept-Profile':'public','Content-Profile':'public'};
+
+async function api(method,table,params='',body=null){
+  const opts={method,headers:{...HDR}};
+  if(body)opts.body=JSON.stringify(body);
+  if(method==='POST'||method==='PATCH')opts.headers['Prefer']='return=representation';
+  const res=await fetch(`${BASE}/${table}${params?'?'+params:''}`,opts);
+  const text=await res.text();
+  const data=text?JSON.parse(text):null;
+  if(!res.ok)throw data||{message:res.statusText};
+  return data;
+}
+
+const SHIFTS=['—','REG','FULL','LEAVE'];
+const SHIFT_LABELS={'—':'—','REG':'Regular','FULL':'Full Day','LEAVE':'Leave'};
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let doctors=[],doctorUnits={},dutiesMap={},notesMap={},unavailabilityMap={},wantDatesMap={};
+const now=new Date();
+let curYear=now.getFullYear(),curMonth=now.getMonth(),pendingFillResult=null;
+
+// ── Schedule helpers ──────────────────────────────────────────
+function getScheduledUnit(y,m,day){
+  const dow=new Date(y,m,day).getDay();
+  if(dow===0)return'both';
+  const weekIdx=Math.floor((day-1)/7);
+  const u1Even=[1,3,5],u1Odd=[2,4,6];
+  return(weekIdx%2===0?u1Even:u1Odd).includes(dow)?'unit1':'unit2';
+}
+// Returns {s1unit, s2unit} — which unit each slot should pull from
+function getSlotUnits(y,m,day){
+  const su=getScheduledUnit(y,m,day);
+  if(su==='both')return{s1:'unit1',s2:'unit2'};
+  return{s1:su,s2:su};
+}
+function getDoctorUnit(n){return doctorUnits[n]||'unit1';}
+function getUnitDoctors(u){return doctors.filter(d=>getDoctorUnit(d)===u);}
+
+// ── Helpers ───────────────────────────────────────────────────
+function toast(msg,err=false){const el=document.getElementById('toast');el.textContent=msg;el.style.background=err?'#b71c1c':'#1a2540';el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
+function showError(ctx,err){const msg=err?.message||err?.details||err?.error||JSON.stringify(err);document.getElementById('dblogtext').textContent='Context : '+ctx+'\nMessage : '+msg+(err?.code?'\nCode    : '+err.code:'')+(err?.hint?'\nHint    : '+err.hint:'');document.getElementById('dblog').classList.add('visible');document.getElementById('dbDot').className='status-dot offline';document.getElementById('dbStatus').textContent='DB Error';}
+function clearError(){document.getElementById('dblog').classList.remove('visible');document.getElementById('dbDot').className='status-dot';document.getElementById('dbStatus').textContent='Connected';}
+function loader(v,msg=''){document.getElementById('loader').classList.toggle('hidden',!v);document.getElementById('loaderMsg').textContent=msg;}
+function fmtDate(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function prevDate(ds){const d=new Date(ds);d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
+function nextDate(ds){const d=new Date(ds);d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+
+function getPdoForDate(ds){
+  const prev=prevDate(ds),pdoNames=[];
+  ['s1','s2'].forEach(slot=>{const d=dutiesMap[prev+'_'+slot];if(d&&d.shift_type==='FULL'&&d.doctor_name&&!pdoNames.includes(d.doctor_name))pdoNames.push(d.doctor_name);});
+  return pdoNames;
+}
+
+// ── Data loaders ──────────────────────────────────────────────
+async function loadDoctors(){
+  try{const data=await api('GET','doctors','select=name,unit&order=created_at.asc');doctors=data.map(d=>d.name);doctorUnits={};data.forEach(d=>{doctorUnits[d.name]=d.unit||'unit1';});clearError();}
+  catch(e){showError('Loading doctors',e);}
+}
+async function loadUnavailabilityRaw(from,to){
+  try{return await api('GET','unavailability',`select=doctor_name,date&date=gte.${from}&date=lte.${to}&order=date.asc`);}
+  catch(e){console.warn('unavailability table not found.',e);return[];}
+}
+async function loadWantDatesRaw(from,to){
+  try{return await api('GET','want_dates',`select=doctor_name,date,slot&date=gte.${from}&date=lte.${to}&order=date.asc`);}
+  catch(e){console.warn('want_dates table not found.',e);return[];}
+}
+async function loadMonthData(){
+  const y=curYear,m=curMonth,days=new Date(y,m+1,0).getDate();
+  const prevMD=new Date(y,m,0),prevDs=fmtDate(prevMD.getFullYear(),prevMD.getMonth(),prevMD.getDate());
+  const from=fmtDate(y,m,1),to=fmtDate(y,m,days);
+  try{
+    const[dr,nr,drPrev,ur,wr]=await Promise.all([
+      api('GET','duties',`select=date,slot,doctor_name,shift_type&date=gte.${from}&date=lte.${to}`),
+      api('GET','notes',`select=date,note&date=gte.${from}&date=lte.${to}`),
+      api('GET','duties',`select=date,slot,doctor_name,shift_type&date=eq.${prevDs}`),
+      loadUnavailabilityRaw(from,to),
+      loadWantDatesRaw(from,to)
+    ]);
+    dutiesMap={};
+    drPrev.forEach(r=>{dutiesMap[r.date+'_'+r.slot]={doctor_name:r.doctor_name||'',shift_type:r.shift_type||'—'};});
+    dr.forEach(r=>{dutiesMap[r.date+'_'+r.slot]={doctor_name:r.doctor_name||'',shift_type:r.shift_type||'—'};});
+    notesMap={};nr.forEach(r=>{notesMap[r.date]=r.note;});
+    unavailabilityMap={};ur.forEach(r=>{if(!unavailabilityMap[r.date])unavailabilityMap[r.date]=new Set();unavailabilityMap[r.date].add(r.doctor_name);});
+    wantDatesMap={};wr.forEach(r=>{const k=r.date+'_'+(r.slot||'s1');if(!wantDatesMap[k])wantDatesMap[k]=new Set();wantDatesMap[k].add(r.doctor_name);});
+    clearError();
+  }catch(e){showError('Loading month data',e);}
+}
+
+function updateSummary(){
+  const ts=new Date().toISOString().slice(0,10),todayDocs=new Set(),fullToday=new Set();
+  ['s1','s2'].forEach(slot=>{const d=dutiesMap[ts+'_'+slot];if(d&&d.doctor_name)todayDocs.add(d.doctor_name);if(d&&d.shift_type==='FULL'&&d.doctor_name)fullToday.add(d.doctor_name);});
+  const pdo=getPdoForDate(ts);
+  document.getElementById('sumTotal').textContent=doctors.length;
+  document.getElementById('sumOnDuty').textContent=todayDocs.size||'0';
+  document.getElementById('sumFull').textContent=fullToday.size||'0';
+  document.getElementById('sumPdo').textContent=pdo.length||'0';
+}
+
+// ── Doctor CRUD ───────────────────────────────────────────────
+async function addDoctor(){
+  const inp=document.getElementById('docInput'),unitSel=document.getElementById('docUnitSelect');
+  let name=inp.value.trim();const unit=unitSel.value;
+  if(!name){inp.focus();return;}
+  if(!name.toLowerCase().startsWith('dr.'))name='Dr.'+name;
+  if(doctors.includes(name)){toast('Already exists');inp.focus();return;}
+  try{
+    await api('POST','doctors','',{name,unit});
+    doctors.push(name);doctorUnits[name]=unit;inp.value='';
+    clearError();toast(name+' added to '+(unit==='unit1'?'Unit 1':'Unit 2')+' ✓');
+    renderChips();updateSummary();render();
+  }catch(e){showError('Adding doctor: '+name,e);toast('Failed to add',true);}
+  inp.focus();
+}
+async function removeDoctor(name){
+  if(!confirm('Remove '+name+'?'))return;
+  try{
+    await api('DELETE','doctors','name=eq.'+encodeURIComponent(name));
+    doctors=doctors.filter(d=>d!==name);delete doctorUnits[name];
+    clearError();toast(name+' removed');renderChips();updateSummary();render();
+  }catch(e){showError('Removing doctor',e);toast('Remove failed',true);}
+}
+async function toggleDoctorUnit(name){
+  const cur=getDoctorUnit(name),next=cur==='unit1'?'unit2':'unit1';
+  try{
+    await api('PATCH','doctors','name=eq.'+encodeURIComponent(name),{unit:next});
+    doctorUnits[name]=next;clearError();
+    toast(name+' → '+(next==='unit1'?'Unit 1':'Unit 2')+' ✓');
+    renderChips();render();
+  }catch(e){showError('Toggling unit',e);toast('Failed',true);}
+}
+
+// ── Save ──────────────────────────────────────────────────────
+async function saveDuty(date,slot,doctor_name,shift_type){
+  try{
+    if(!doctor_name&&(!shift_type||shift_type==='—')){await api('DELETE','duties',`date=eq.${date}&slot=eq.${slot}`);}
+    else{const ex=await api('GET','duties',`date=eq.${date}&slot=eq.${slot}&select=id`);ex&&ex.length?await api('PATCH','duties',`date=eq.${date}&slot=eq.${slot}`,{doctor_name:doctor_name||null,shift_type:shift_type||'—'}):await api('POST','duties','',{date,slot,doctor_name:doctor_name||null,shift_type:shift_type||'—'});}
+  }catch(e){showError('Saving duty '+date+' '+slot,e);}
+}
+async function saveNote(date,note){
+  try{
+    if(!note){await api('DELETE','notes','date=eq.'+date);return;}
+    const ex=await api('GET','notes','date=eq.'+date+'&select=id');
+    ex&&ex.length?await api('PATCH','notes','date=eq.'+date,{note}):await api('POST','notes','',{date,note});
+  }catch(e){showError('Saving note '+date,e);}
+}
+
+// ── Handlers ──────────────────────────────────────────────────
+function handleDocChange(sel,date,slot){
+  const key=date+'_'+slot;
+  if(!dutiesMap[key])dutiesMap[key]={doctor_name:'',shift_type:'—'};
+  dutiesMap[key].doctor_name=sel.value;
+  saveDuty(date,slot,sel.value,dutiesMap[key].shift_type);
+  refreshPdoRow(date);updateSummary();
+}
+function handleShiftChange(sel,date,slot){
+  const val=sel.value;
+  sel.className='shift-select'+(val==='—'?'':' s-'+val);
+  const key=date+'_'+slot;
+  if(!dutiesMap[key])dutiesMap[key]={doctor_name:'',shift_type:'—'};
+  dutiesMap[key].shift_type=val;
+  saveDuty(date,slot,dutiesMap[key].doctor_name,val);
+  const row=sel.closest('tr');
+  if(row){const s1=dutiesMap[date+'_s1']?.shift_type,s2=dutiesMap[date+'_s2']?.shift_type;row.classList.toggle('has-full',s1==='FULL'||s2==='FULL');}
+  refreshPdoRow(nextDate(date));updateSummary();
+}
+function refreshPdoRow(ds){const row=document.querySelector(`tr[data-date="${ds}"]`);if(!row)return;const cell=row.querySelector('.pdo-cell');if(cell)cell.innerHTML=buildPdoHtml(ds);}
+function buildPdoHtml(ds){const names=getPdoForDate(ds);if(!names.length)return'<span class="pdo-empty">—</span>';return names.map(n=>`<span class="pdo-badge"><span class="pdo-count">P</span>${n.replace('Dr.','Dr. ')}</span>`).join('');}
+function buildWantHtml(ds){
+  const s1names=wantDatesMap[ds+'_s1']?[...wantDatesMap[ds+'_s1']]:[];
+  const s2names=wantDatesMap[ds+'_s2']?[...wantDatesMap[ds+'_s2']]:[];
+  const all=[...s1names.map(n=>`<span class="want-badge"><span class="want-count">W1</span>${n.replace('Dr.','Dr. ')}</span>`),
+             ...s2names.map(n=>`<span class="want-badge" style="background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8"><span class="want-count" style="background:#6a1b9a">W2</span>${n.replace('Dr.','Dr. ')}</span>`)];
+  return all.length?all.join(''):'<span class="pdo-empty">—</span>';
+}
+let noteTimers={};
+function handleNoteChange(inp,date){notesMap[date]=inp.value;clearTimeout(noteTimers[date]);noteTimers[date]=setTimeout(()=>saveNote(date,inp.value),800);}
+
+function changeMonth(dir){
+  curMonth+=dir;
+  if(curMonth>11){curMonth=0;curYear++;}if(curMonth<0){curMonth=11;curYear--;}
+  loader(true,'');loadMonthData().then(()=>{loader(false);updateSummary();render();});
+}
+
+// ── Render chips ──────────────────────────────────────────────
+function renderChips(){
+  const wrap=document.getElementById('doctorChipsWrap');
+  const u1=getUnitDoctors('unit1'),u2=getUnitDoctors('unit2');
+  function row(unitDocs,unitKey){
+    const label=unitKey==='unit1'?'Unit 1':'Unit 2';
+    const empty=unitDocs.length===0?'<span style="font-size:0.7rem;color:#aaa">No doctors yet</span>':'';
+    return`<div class="chips-unit-row">
+      <span class="chips-unit-label ${unitKey}">${label}</span>
+      ${empty}
+      ${unitDocs.map(d=>`<div class="chip">${d}<span class="unit-toggle ${unitKey}" onclick="toggleDoctorUnit('${esc(d)}')" title="Move to ${unitKey==='unit1'?'Unit 2':'Unit 1'}">${unitKey==='unit1'?'U1':'U2'}</span><span class="rm" onclick="removeDoctor('${esc(d)}')">✕</span></div>`).join('')}
+    </div>`;
+  }
+  wrap.innerHTML=row(u1,'unit1')+'<hr class="chips-divider">'+row(u2,'unit2');
+}
+
+// ── Render table ──────────────────────────────────────────────
+function render(){
+  const y=curYear,m=curMonth,days=new Date(y,m+1,0).getDate(),todayStr=new Date().toISOString().slice(0,10);
+  document.getElementById('rosterTitle').textContent=MONTHS[m]+' - '+y+' (Duty Roster)';
+  document.getElementById('monthLabel').textContent=MONTHS[m]+' '+y;
+  document.getElementById('tableHead').innerHTML=`<tr>
+    <th class="left" style="min-width:70px">Date</th>
+    <th class="left" style="min-width:95px">Day</th>
+    <th style="min-width:420px">Doctors on Duty</th>
+    <th style="min-width:180px">PDO Staff</th>
+    <th style="min-width:140px">Want Dates</th>
+    <th style="min-width:130px">Notes</th>
+  </tr>`;
+
+  function mkDocOpts(unit,val){
+    const uDocs=getUnitDoctors(unit);
+    return'<option value="">— Doctor —</option>'+uDocs.map(d=>`<option value="${d}"${d===val?' selected':''}>${d}</option>`).join('');
+  }
+  const mkShift=v=>SHIFTS.map(s=>`<option value="${s}"${s===v?' selected':''}>${SHIFT_LABELS[s]}</option>`).join('');
+  const sCls=v=>v&&v!=='—'?' s-'+v:'';
+
+  let html='';
+  for(let day=1;day<=days;day++){
+    const dt=new Date(y,m,day),dow=dt.getDay(),ds=fmtDate(y,m,day);
+    const{s1:s1u,s2:s2u}=getSlotUnits(y,m,day);
+    const su=getScheduledUnit(y,m,day);
+    const d1=dutiesMap[ds+'_s1']||{doctor_name:'',shift_type:'—'};
+    const d2=dutiesMap[ds+'_s2']||{doctor_name:'',shift_type:'—'};
+    const hasFull=d1.shift_type==='FULL'||d2.shift_type==='FULL';
+    const nt=(notesMap[ds]||'').replace(/"/g,'&quot;');
+
+    const bCls=su==='both'?'udb-both':su==='unit1'?'udb-u1':'udb-u2';
+    const bTxt=su==='both'?'Both':su==='unit1'?'Unit 1':'Unit 2';
+    const badge=`<span class="unit-day-badge ${bCls}">${bTxt}</span>`;
+
+    let cls=ds===todayStr?'today-row':dow===0?'sunday':'';
+    if(hasFull)cls+=(cls?' ':'')+'has-full';
+
+    html+=`<tr class="${cls}" data-date="${ds}">
+      <td class="date-cell">${String(day).padStart(2,'0')}.${String(m+1).padStart(2,'0')}.${String(y).slice(2)}</td>
+      <td class="day-cell">${DAYS_SHORT[dow]}${badge}</td>
+      <td class="duty-cell">
+        <div class="duty-rows">
+          <div class="duty-row-item">
+            <span class="slot-label lbl-${s1u}">${s1u==='unit1'?'U1':'U2'}</span>
+            <select class="doc-select" onchange="handleDocChange(this,'${ds}','s1')">${mkDocOpts(s1u,d1.doctor_name)}</select>
+            <select class="shift-select${sCls(d1.shift_type)}" onchange="handleShiftChange(this,'${ds}','s1')">${mkShift(d1.shift_type)}</select>
+          </div>
+          <div class="duty-row-item">
+            <span class="slot-label lbl-${s2u}">${s2u==='unit1'?'U1':'U2'}</span>
+            <select class="doc-select" onchange="handleDocChange(this,'${ds}','s2')">${mkDocOpts(s2u,d2.doctor_name)}</select>
+            <select class="shift-select${sCls(d2.shift_type)}" onchange="handleShiftChange(this,'${ds}','s2')">${mkShift(d2.shift_type)}</select>
+          </div>
+        </div>
+      </td>
+      <td class="pdo-cell">${buildPdoHtml(ds)}</td>
+      <td class="pdo-cell">${buildWantHtml(ds)}</td>
+      <td class="note-cell"><input class="note-input" type="text" placeholder="remarks…" value="${nt}" onchange="handleNoteChange(this,'${ds}')"/></td>
+    </tr>`;
+  }
+  document.getElementById('tableBody').innerHTML=html;
+}
+
+// ── Staff Links ───────────────────────────────────────────────
+function openStaffLinks(){
+  if(!doctors.length){toast('No doctors added yet');return;}
+  const base=window.location.href.split('?')[0],monthParam=curMonth+1,yearParam=curYear;
+  const u1=getUnitDoctors('unit1'),u2=getUnitDoctors('unit2');
+  let idx=0;
+  function buildRows(unitDocs){
+    return unitDocs.map(d=>{
+      const url=`${base}?doctor=${encodeURIComponent(d)}&month=${monthParam}&year=${yearParam}`;
+      const i=idx++;
+      return`<div class="doctor-link-row"><div class="dlr-name">${d}</div><div class="dlr-url" title="${url}">${url}</div><button class="copy-btn" id="copybtn-${i}" onclick="copyLink(${i},'${url.replace(/'/g,"\\'")}')">Copy</button></div>`;
+    }).join('');
+  }
+  document.getElementById('staffLinksBody').innerHTML=
+    `<div class="links-unit-head u1">Unit 1 — ${u1.length} doctor${u1.length!==1?'s':''}</div>`+buildRows(u1)+
+    `<div class="links-unit-head u2" style="margin-top:0.75rem">Unit 2 — ${u2.length} doctor${u2.length!==1?'s':''}</div>`+buildRows(u2);
+  document.getElementById('staffLinksModal').classList.remove('hidden');
+}
+function copyLink(idx,url){
+  const done=()=>{const btn=document.getElementById('copybtn-'+idx);btn.textContent='✓ Copied';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);};
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(done).catch(()=>fallbackCopy(url,done));else fallbackCopy(url,done);
+}
+function fallbackCopy(url,cb){const ta=document.createElement('textarea');ta.value=url;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);cb();}
+
+// ── Auto-fill ─────────────────────────────────────────────────
+function openAutoFill(){
+  if(!doctors.length){toast('No doctors added yet');return;}
+  const u1=getUnitDoctors('unit1'),u2=getUnitDoctors('unit2');
+  if(!u1.length||!u2.length){toast(`Need doctors in both units. U1: ${u1.length}, U2: ${u2.length}`,true);return;}
+  pendingFillResult=null;
+  document.getElementById('applyFillBtn').disabled=true;
+  document.getElementById('autoFillMonthLabel').textContent=MONTHS[curMonth]+' '+curYear;
+  document.getElementById('autoFillBody').innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:0.8rem;">Computing schedule…</div>';
+  document.getElementById('autoFillModal').classList.remove('hidden');
+  setTimeout(()=>{const res=computeAutoFill();pendingFillResult=res.result;renderAutoFillPreview(res);document.getElementById('applyFillBtn').disabled=false;},60);
+}
+
+function computeAutoFill(){
+  const y=curYear,m=curMonth,days=new Date(y,m+1,0).getDate();
+  const fullDayNums=new Set();for(let d=4;d<=days;d+=4)fullDayNums.add(d);
+  const result={},fullCount={},totalCount={},satAssigned=new Set(),conflicts=[];
+  doctors.forEach(d=>{fullCount[d]=0;totalCount[d]=0;});
+
+  for(let day=1;day<=days;day++){
+    const ds=fmtDate(y,m,day),prevDs=prevDate(ds),dow=new Date(y,m,day).getDay();
+    const isSat=dow===6,isFullDay=fullDayNums.has(day);
+    const{s1:s1u,s2:s2u}=getSlotUnits(y,m,day);
+
+    const pdoToday=new Set();
+    if(result[prevDs]){['s1','s2'].forEach(slot=>{const a=result[prevDs][slot];if(a&&a.shift==='FULL')pdoToday.add(a.doctor);});}
+    else if(day===1){['s1','s2'].forEach(slot=>{const d=dutiesMap[prevDs+'_'+slot];if(d&&d.shift_type==='FULL'&&d.doctor_name)pdoToday.add(d.doctor_name);});}
+
+    const unavailToday=unavailabilityMap[ds]||new Set();
+    const wantS1=wantDatesMap[ds+'_s1']||new Set();
+    const wantS2=wantDatesMap[ds+'_s2']||new Set();
+
+    function pickBest(unit,exclude,wantSet){
+      const pool=getUnitDoctors(unit);
+      // Priority 1: wants this slot, not PDO, not unavail, not double-sat
+      let a=pool.filter(d=>d!==exclude&&wantSet.has(d)&&!pdoToday.has(d)&&!unavailToday.has(d)&&(!isSat||!satAssigned.has(d)));
+      if(!a.length)a=pool.filter(d=>d!==exclude&&!pdoToday.has(d)&&!unavailToday.has(d)&&(!isSat||!satAssigned.has(d)));
+      if(!a.length)a=pool.filter(d=>d!==exclude&&!pdoToday.has(d)&&!unavailToday.has(d));
+      if(!a.length)a=pool.filter(d=>d!==exclude&&!pdoToday.has(d));
+      if(!a.length)a=pool.filter(d=>d!==exclude);
+      if(!a.length)a=[...pool];
+      // Among candidates: sort want-date doctors first, then by fewest duties
+      return[...a].sort((a,b)=>{
+        const wa=wantSet.has(a)?0:1,wb=wantSet.has(b)?0:1;
+        if(wa!==wb)return wa-wb;
+        return isFullDay?fullCount[a]-fullCount[b]||totalCount[a]-totalCount[b]:totalCount[a]-totalCount[b];
+      })[0]||null;
+    }
+
+    const doc1=pickBest(s1u,null,wantS1);
+    // If both slots use the same unit, exclude doc1 so slot2 gets a different doctor
+    const doc2=pickBest(s2u,s1u===s2u?doc1:null,wantS2);
+    const shift=isFullDay?'FULL':'REG';
+
+    const msgs=[];
+    if(!doc1)msgs.push('No doctor for slot1 ('+s1u+')');
+    if(!doc2)msgs.push('No doctor for slot2 ('+s2u+')');
+
+    if(doc1){totalCount[doc1]++;if(isFullDay)fullCount[doc1]++;if(isSat)satAssigned.add(doc1);}
+    if(doc2){totalCount[doc2]++;if(isFullDay)fullCount[doc2]++;if(isSat)satAssigned.add(doc2);}
+
+    result[ds]={s1:doc1?{doctor:doc1,shift,unit:s1u}:null,s2:doc2?{doctor:doc2,shift,unit:s2u}:null,su:getScheduledUnit(y,m,day),conflict:msgs.length>0,conflictMsg:msgs.join('; ')};
+    if(msgs.length)conflicts.push({date:ds,msg:msgs.join('; ')});
+  }
+  return{result,conflicts,fullCount,totalCount};
+}
+
+function renderAutoFillPreview({result,conflicts,fullCount,totalCount}){
+  const y=curYear,m=curMonth,days=new Date(y,m+1,0).getDate();
+  const u1=getUnitDoctors('unit1'),u2=getUnitDoctors('unit2');
+  let html=`<div class="stats-grid">
+    <div class="stat-chip">Unit 1: <strong>${u1.length}</strong></div>
+    <div class="stat-chip">Unit 2: <strong>${u2.length}</strong></div>
+    <div class="stat-chip">📅 <strong>${days}</strong> days</div>
+    ${conflicts.length?`<div class="stat-chip" style="background:#fce4ec;color:#c62828;border-color:var(--leave-b)">⚠ <strong>${conflicts.length}</strong> warning${conflicts.length>1?'s':''}</div>`:''}
+  </div>`;
+  html+=`<details style="margin-bottom:0.75rem;"><summary style="font-size:0.72rem;font-weight:600;cursor:pointer;color:var(--header);padding:0.3rem 0;user-select:none;">Duty Distribution</summary>
+    <div class="dist-unit-head u1">Unit 1</div><div class="dist-grid">${u1.map(d=>`<div class="dist-chip">${d.replace('Dr.','')} — <b>${fullCount[d]||0}</b> full, <b>${totalCount[d]||0}</b> total</div>`).join('')}</div>
+    <div class="dist-unit-head u2">Unit 2</div><div class="dist-grid">${u2.map(d=>`<div class="dist-chip">${d.replace('Dr.','')} — <b>${fullCount[d]||0}</b> full, <b>${totalCount[d]||0}</b> total</div>`).join('')}</div>
+  </details>`;
+  if(conflicts.length){html+=`<div class="conflict-box"><h4>⚠ Warnings</h4>${conflicts.map(c=>`<div style="margin-top:3px">• ${c.date}: ${c.msg}</div>`).join('')}</div>`;}
+  html+=`<table class="preview-table"><thead><tr><th>Date</th><th>Day</th><th>Sched.</th><th>Doctor 1</th><th>Doctor 2</th><th>PDO Next</th></tr></thead><tbody>`;
+  for(let day=1;day<=days;day++){
+    const ds=fmtDate(y,m,day),r=result[ds],dow=DAYS_SHORT[new Date(y,m,day).getDay()],su=r?.su||'unit1';
+    const schedTxt=`<span style="font-size:0.62rem;background:${su==='both'?'#e8f5e9':su==='unit1'?'var(--u1-bg)':'var(--u2-bg)'};color:${su==='both'?'#2e7d32':su==='unit1'?'var(--u1)':'var(--u2)'};border:1px solid ${su==='both'?'#a5d6a7':su==='unit1'?'var(--u1-b)':'var(--u2-b)'};padding:1px 5px;border-radius:3px">${su==='both'?'Both':su==='unit1'?'U1':'U2'}</span>`;
+    const pdoNext=[];if(r?.s1?.shift==='FULL')pdoNext.push(r.s1.doctor);if(r?.s2?.shift==='FULL'&&!pdoNext.includes(r.s2.doctor))pdoNext.push(r.s2.doctor);
+    const s1t=r?.s1?`<span class="${r.s1.shift==='FULL'?'preview-full-cell':''}">${r.s1.doctor} (${r.s1.shift})</span>`:'<span style="color:#ccc">—</span>';
+    const s2t=r?.s2?`<span class="${r.s2.shift==='FULL'?'preview-full-cell':''}">${r.s2.doctor} (${r.s2.shift})</span>`:'<span style="color:#ccc">—</span>';
+    html+=`<tr class="${r?.conflict?'preview-conflict':''}"><td>${String(day).padStart(2,'0')}.${String(m+1).padStart(2,'0')}.${String(y).slice(2)}${r?.conflict?'<span class="conflict-pill">⚠</span>':''}</td><td>${dow}</td><td>${schedTxt}</td><td>${s1t}</td><td>${s2t}</td><td style="font-size:0.65rem;color:var(--pdo-text)">${pdoNext.map(n=>n.replace('Dr.','')).join(', ')||'—'}</td></tr>`;
+  }
+  html+=`</tbody></table>`;
+  document.getElementById('autoFillBody').innerHTML=html;
+}
+
+async function applyAutoFill(){
+  if(!pendingFillResult)return;
+  const btn=document.getElementById('applyFillBtn');btn.disabled=true;btn.textContent='Saving…';loader(true,'Applying…');
+  try{
+    const y=curYear,m=curMonth,days=new Date(y,m+1,0).getDate();
+    for(let day=1;day<=days;day++){
+      const ds=fmtDate(y,m,day),r=pendingFillResult[ds];if(!r)continue;
+      loader(true,`Writing ${ds} (${day}/${days})…`);
+      const saves=[];
+      ['s1','s2'].forEach(slot=>{
+        const a=r[slot];
+        if(a){saves.push(api('GET','duties',`date=eq.${ds}&slot=eq.${slot}&select=id`).then(ex=>ex.length?api('PATCH','duties',`date=eq.${ds}&slot=eq.${slot}`,{doctor_name:a.doctor,shift_type:a.shift}):api('POST','duties','',{date:ds,slot,doctor_name:a.doctor,shift_type:a.shift})));dutiesMap[ds+'_'+slot]={doctor_name:a.doctor,shift_type:a.shift};}
+        else{saves.push(api('DELETE','duties',`date=eq.${ds}&slot=eq.${slot}`).catch(()=>{}));delete dutiesMap[ds+'_'+slot];}
+      });
+      await Promise.all(saves);
+    }
+    loader(false);closeModal('autoFillModal');clearError();updateSummary();render();toast('Auto-fill applied ✓');
+  }catch(e){loader(false);showError('Applying auto-fill',e);toast('Apply failed',true);btn.disabled=false;btn.textContent='⚡ Apply to Roster';}
+}
+
+// ── Import March 2026 ─────────────────────────────────────────
+const MARCH_DATA=[
+  ['2026-03-01','Dr.Divya','REG','Dr.Anuthomas','FULL','Thiruverkadu: 3.3.26-Dr.Sharanya'],
+  ['2026-03-02','Dr.Ramani','REG','Dr.Abilashini','REG','Thiruverkadu: 10.3.26-Dr.Ganga'],
+  ['2026-03-03','Dr.Rathna','REG','Dr.Prathibha','REG','Thiruverkadu: 17.3.26-Dr.Sharanya'],
+  ['2026-03-04','Dr.Varshini','REG','Dr.Sandhya','REG','Thiruverkadu: 24.3.26-Dr.Sharanya'],
+  ['2026-03-05','Dr.Sharanya','REG','Dr.Yasmine','REG',''],
+  ['2026-03-06','Dr.Ramya','REG','Dr.Devipriya','REG',''],
+  ['2026-03-07','Dr.Manju','REG','Dr.Anuthomas','REG',''],
+  ['2026-03-08','Dr.Ganga','FULL','Dr.Rathna','FULL','Parivakam camp: 5.3.26-Dr.Anuthomas'],
+  ['2026-03-09','Dr.Varshini','REG','Dr.Abilashini','REG','Parivakam: 12.3.26-Dr.Sandhya'],
+  ['2026-03-10','Dr.Devipriya','REG','Dr.Divya','FULL','Parivakam: 26.3.26-Dr.Ramani'],
+  ['2026-03-11','Dr.Sharanya','REG','Dr.Ramya','REG',''],
+  ['2026-03-12','Dr.Ramani','REG','Dr.Yasmine','REG',''],
+  ['2026-03-13','Dr.Manju','REG','Dr.Sandhya','REG',''],
+  ['2026-03-14','Dr.Prathibha','REG','Dr.Abilashini','REG',''],
+  ['2026-03-15','Dr.Yasmine','FULL','Dr.Ramya','FULL',''],
+  ['2026-03-16','Dr.Divya','REG','Dr.Anuthomas','REG',''],
+  ['2026-03-17','Dr.Ganga','REG','Dr.Rathna','REG',''],
+  ['2026-03-18','Dr.Varshini','REG','Dr.Yasmine','REG',''],
+  ['2026-03-19','Dr.Ramya','REG','Dr.Sharanya','REG',''],
+  ['2026-03-20','Dr.Ramani','REG','Dr.Devipriya','REG',''],
+  ['2026-03-21','Dr.Manju','REG','Dr.Divya','REG',''],
+  ['2026-03-22','Dr.Varshini','FULL','Dr.Prathibha','FULL',''],
+  ['2026-03-23','Dr.Rathna','REG','Dr.Sandhya','REG',''],
+  ['2026-03-24','Dr.Yasmine','REG','Dr.Anuthomas','REG',''],
+  ['2026-03-25','Dr.Vinitha','REG','Dr.Ramya','REG',''],
+  ['2026-03-26','Dr.Manju','REG','Dr.Devipriya','REG',''],
+  ['2026-03-27','Dr.Abilashini','REG','Dr.Ganga','REG',''],
+  ['2026-03-28','Dr.Sharanya','FULL','Dr.Ramani','FULL',''],
+  ['2026-03-29','Dr.Vinitha','FULL','Dr.Sandhya','FULL',''],
+  ['2026-03-30','Dr.Rathna','REG','Dr.Prathibha','REG',''],
+  ['2026-03-31','Dr.Ganga','FULL','Dr.Anuthomas','REG',''],
+];
+const MARCH_DOCTORS=[
+  {name:'Dr.Divya',unit:'unit1'},{name:'Dr.Ramani',unit:'unit1'},{name:'Dr.Rathna',unit:'unit1'},
+  {name:'Dr.Varshini',unit:'unit1'},{name:'Dr.Sharanya',unit:'unit1'},{name:'Dr.Ramya',unit:'unit1'},
+  {name:'Dr.Manju',unit:'unit1'},{name:'Dr.Vinitha',unit:'unit1'},
+  {name:'Dr.Ganga',unit:'unit2'},{name:'Dr.Devipriya',unit:'unit2'},{name:'Dr.Abilashini',unit:'unit2'},
+  {name:'Dr.Prathibha',unit:'unit2'},{name:'Dr.Yasmine',unit:'unit2'},{name:'Dr.Sandhya',unit:'unit2'},
+  {name:'Dr.Anuthomas',unit:'unit2'},
+];
+async function importMarch2026(){
+  if(!confirm('Import March 2026? Slot 1 → Unit 1, Slot 2 → Unit 2. Existing entries overwritten.'))return;
+  loader(true,'Importing...');
+  try{
+    for(const{name,unit}of MARCH_DOCTORS){
+      if(!doctors.includes(name)){
+        try{await api('POST','doctors','',{name,unit});doctors.push(name);doctorUnits[name]=unit;}
+        catch(e){if(!JSON.stringify(e).includes('23505'))throw e;try{await api('PATCH','doctors','name=eq.'+encodeURIComponent(name),{unit});doctorUnits[name]=unit;}catch(e2){}}
+      }else{doctorUnits[name]=unit;}
+    }
+    let done=0;
+    for(const[date,d1,s1,d2,s2,note]of MARCH_DATA){
+      done++;loader(true,`Saving ${date} (${done}/${MARCH_DATA.length})...`);
+      const[ex1,ex2]=await Promise.all([api('GET','duties',`date=eq.${date}&slot=eq.s1&select=id`),api('GET','duties',`date=eq.${date}&slot=eq.s2&select=id`)]);
+      await Promise.all([
+        ex1.length?api('PATCH','duties',`date=eq.${date}&slot=eq.s1`,{doctor_name:d1,shift_type:s1}):api('POST','duties','',{date,slot:'s1',doctor_name:d1,shift_type:s1}),
+        ex2.length?api('PATCH','duties',`date=eq.${date}&slot=eq.s2`,{doctor_name:d2,shift_type:s2}):api('POST','duties','',{date,slot:'s2',doctor_name:d2,shift_type:s2})
+      ]);
+      if(note){const exn=await api('GET','notes','date=eq.'+date+'&select=id');exn.length?await api('PATCH','notes','date=eq.'+date,{note}):await api('POST','notes','',{date,note});}
+    }
+    curYear=2026;curMonth=2;await loadMonthData();
+    loader(false);clearError();renderChips();updateSummary();render();
+    toast('March 2026 imported ✓');
+  }catch(e){loader(false);showError('Importing March 2026',e);toast('Import failed',true);}
+}
+
+// ── Doctor Portal ─────────────────────────────────────────────
+let portalDoctor='',portalYear=now.getFullYear(),portalMonth=now.getMonth(),portalUnavailSet=new Set(),portalWantS1Set=new Set(),portalWantS2Set=new Set(),portalDoctorUnit='unit1';
+
+async function initPortal(doctorName){
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('portalView').classList.add('active');
+  document.title=doctorName+' — Availability';
+  portalDoctor=doctorName;
+  const p=new URLSearchParams(window.location.search);
+  portalYear=parseInt(p.get('year'))||now.getFullYear();
+  const rawM=parseInt(p.get('month'));
+  portalMonth=isNaN(rawM)?now.getMonth():rawM-1;
+  try{const data=await api('GET','doctors','select=unit&name=eq.'+encodeURIComponent(doctorName));portalDoctorUnit=data?.[0]?.unit||'unit1';}
+  catch(e){portalDoctorUnit='unit1';}
+  document.getElementById('portalDoctorName').textContent=doctorName;
+  const ub=document.getElementById('portalUnitBadge');
+  ub.textContent=portalDoctorUnit==='unit1'?'Unit 1':'Unit 2';
+  ub.className='ph-unit '+(portalDoctorUnit==='unit1'?'u1':'u2');
+  loader(true,'Loading your availability…');
+  await loadPortalData();loader(false);
+  renderPortalCalendar();renderPortalSummary();renderPortalWantCalendar('s1');renderPortalWantCalendar('s2');renderPortalWantSummary();
+}
+async function loadPortalData(){
+  const y=portalYear,m=portalMonth,days=new Date(y,m+1,0).getDate();
+  const from=fmtDate(y,m,1),to=fmtDate(y,m,days);
+  try{const data=await api('GET','unavailability',`select=date&doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=gte.${from}&date=lte.${to}`);portalUnavailSet=new Set(data.map(r=>r.date));}
+  catch(e){portalUnavailSet=new Set();}
+  try{
+    const data=await api('GET','want_dates',`select=date,slot&doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=gte.${from}&date=lte.${to}`);
+    portalWantS1Set=new Set(data.filter(r=>(r.slot||'s1')==='s1').map(r=>r.date));
+    portalWantS2Set=new Set(data.filter(r=>r.slot==='s2').map(r=>r.date));
+  }
+  catch(e){portalWantS1Set=new Set();portalWantS2Set=new Set();}
+}
+function portalChangeMonth(dir){
+  portalMonth+=dir;if(portalMonth>11){portalMonth=0;portalYear++;}if(portalMonth<0){portalMonth=11;portalYear--;}
+  loadPortalData().then(()=>{renderPortalCalendar();renderPortalSummary();renderPortalWantCalendar('s1');renderPortalWantCalendar('s2');renderPortalWantSummary();});
+}
+function renderPortalCalendar(){
+  const y=portalYear,m=portalMonth,days=new Date(y,m+1,0).getDate(),firstDow=new Date(y,m,1).getDay(),todayStr=new Date().toISOString().slice(0,10);
+  document.getElementById('portalMonthLabel').textContent=MONTHS[m]+' '+y;
+  let html=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++)html+='<div class="cal-day cal-empty"></div>';
+  for(let day=1;day<=days;day++){
+    const ds=fmtDate(y,m,day),dow=new Date(y,m,day).getDay(),isPast=ds<todayStr,isToday=ds===todayStr,isUnavail=portalUnavailSet.has(ds);
+    const su=getScheduledUnit(y,m,day),isMyDay=su==='both'||(portalDoctorUnit===su);
+    let cls='cal-day';
+    if(isPast)cls+=' cal-past';else if(isUnavail)cls+=' cal-unavail';else cls+=' cal-avail';
+    if(isToday)cls+=' cal-today-ring';
+    if(dow===0&&!isUnavail&&!isPast)cls+=' cal-sunday';
+    const style=(!isPast&&isMyDay&&!isUnavail)?` style="outline:2px solid ${portalDoctorUnit==='unit1'?'var(--u1-b)':'var(--u2-b)'};outline-offset:-2px"`:'';
+    html+=`<div class="${cls}"${isPast?'':` onclick="portalToggle('${ds}')"`}${style}>${day}</div>`;
+  }
+  document.getElementById('portalCalGrid').innerHTML=html;
+}
+function renderPortalSummary(){
+  const sorted=[...portalUnavailSet].sort();
+  document.getElementById('portalSummaryText').innerHTML=sorted.length?`You've marked <strong>${sorted.length}</strong> day${sorted.length>1?'s':''} unavailable this month:`:"No unavailable dates marked. You're fully available!";
+  document.getElementById('portalUnavailList').innerHTML=sorted.map(ds=>{const d=new Date(ds);return`<span class="unavail-tag">${DAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}</span>`;}).join('');
+}
+
+function renderPortalWantCalendar(slot){
+  const wantSet=slot==='s1'?portalWantS1Set:portalWantS2Set;
+  const slotUnit=slot==='s1'?'unit1':'unit2';
+  const gridId=slot==='s1'?'portalWantCalGridS1':'portalWantCalGridS2';
+  const y=portalYear,m=portalMonth,days=new Date(y,m+1,0).getDate(),firstDow=new Date(y,m,1).getDay(),todayStr=new Date().toISOString().slice(0,10);
+  let html=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++)html+='<div class="cal-day cal-empty"></div>';
+  for(let day=1;day<=days;day++){
+    const ds=fmtDate(y,m,day),dow=new Date(y,m,day).getDay(),isPast=ds<todayStr,isWant=wantSet.has(ds);
+    // Highlight days where this slot's unit is scheduled
+    const su=getScheduledUnit(y,m,day);
+    const isMySlotDay=(su==='both')||(su===slotUnit);
+    let cls='cal-day';
+    if(isPast)cls+=' cal-past';
+    else if(isWant)cls+=' cal-want';
+    else cls+=' cal-avail';
+    if(dow===6&&!isWant&&!isPast)cls+=' cal-sunday';
+    const uColor=slotUnit==='unit1'?'var(--u1-b)':'var(--u2-b)';
+    const style=(!isPast&&isMySlotDay&&!isWant)?` style="outline:2px solid ${uColor};outline-offset:-2px"`:'';
+    html+=`<div class="${cls}"${isPast?'':` onclick="portalWantToggle('${ds}','${slot}')"`}${style}>${day}</div>`;
+  }
+  document.getElementById(gridId).innerHTML=html;
+}
+
+function renderPortalWantSummary(){
+  // S1 summary
+  const s1sorted=[...portalWantS1Set].sort();
+  document.getElementById('portalWantSummaryTextS1').innerHTML=s1sorted.length?`<strong>${s1sorted.length}</strong> preferred day${s1sorted.length>1?'s':''} for Unit 1 slot:`:'No preferences for Unit 1 slot.';
+  document.getElementById('portalWantListS1').innerHTML=s1sorted.map(ds=>{const d=new Date(ds);return`<span class="want-tag">${DAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}</span>`;}).join('');
+  // S2 summary
+  const s2sorted=[...portalWantS2Set].sort();
+  document.getElementById('portalWantSummaryTextS2').innerHTML=s2sorted.length?`<strong>${s2sorted.length}</strong> preferred day${s2sorted.length>1?'s':''} for Unit 2 slot:`:'No preferences for Unit 2 slot.';
+  document.getElementById('portalWantListS2').innerHTML=s2sorted.map(ds=>{const d=new Date(ds);return`<span class="want-tag" style="background:var(--u2-bg);color:var(--u2);border-color:var(--u2-b)">${DAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}</span>`;}).join('');
+}
+
+async function portalWantToggle(ds,slot){
+  const wantSet=slot==='s1'?portalWantS1Set:portalWantS2Set;
+  const statusId=slot==='s1'?'portalWantStatusS1':'portalWantStatusS2';
+  const s=document.getElementById(statusId);s.className='portal-status saving';
+  if(wantSet.has(ds)){
+    try{s.textContent='Removing…';await api('DELETE','want_dates',`doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=eq.${ds}&slot=eq.${slot}`);wantSet.delete(ds);s.className='portal-status saved';s.textContent='Saved ✓';}
+    catch(e){s.className='portal-status';s.textContent='Error saving';}
+  }else{
+    try{s.textContent='Saving…';const ex=await api('GET','want_dates',`doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=eq.${ds}&slot=eq.${slot}&select=id`);if(!ex.length)await api('POST','want_dates','',{doctor_name:portalDoctor,date:ds,slot});wantSet.add(ds);s.className='portal-status saved';s.textContent='Saved ✓';}
+    catch(e){s.className='portal-status';s.textContent='Error saving';}
+  }
+  setTimeout(()=>{s.textContent='';s.className='portal-status';},2000);
+  renderPortalWantCalendar(slot);renderPortalWantSummary();
+}
+async function portalToggle(ds){
+  const s=document.getElementById('portalStatus');s.className='portal-status saving';
+  if(portalUnavailSet.has(ds)){
+    try{s.textContent='Removing…';await api('DELETE','unavailability',`doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=eq.${ds}`);portalUnavailSet.delete(ds);s.className='portal-status saved';s.textContent='Saved ✓';}
+    catch(e){s.className='portal-status';s.textContent='Error saving';}
+  }else{
+    try{s.textContent='Saving…';const ex=await api('GET','unavailability',`doctor_name=eq.${encodeURIComponent(portalDoctor)}&date=eq.${ds}&select=id`);if(!ex.length)await api('POST','unavailability','',{doctor_name:portalDoctor,date:ds});portalUnavailSet.add(ds);s.className='portal-status saved';s.textContent='Saved ✓';}
+    catch(e){s.className='portal-status';s.textContent='Error saving';}
+  }
+  setTimeout(()=>{s.textContent='';s.className='portal-status';},2000);
+  renderPortalCalendar();renderPortalSummary();
+}
+document.getElementById('docInput').addEventListener('keydown',e=>{if(e.key==='Enter')addDoctor();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(el=>el.classList.add('hidden'));});
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.add('hidden');});});
+
+const _p=new URLSearchParams(window.location.search),_pd=_p.get('doctor');
+if(_pd){initPortal(decodeURIComponent(_pd));}
+else{(async()=>{loader(true,'');await Promise.all([loadDoctors(),loadMonthData()]);loader(false);renderChips();updateSummary();render();})();}
+</script>
 </body>
 </html>
